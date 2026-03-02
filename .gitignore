@@ -1,0 +1,22 @@
+# Entornos virtuales
+venv/
+.env
+
+# Archivos compilados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Bases de datos y almacenamiento de RAG
+chroma_db/*
+!chroma_db/.gitkeep
+docs/*.txt
+docs/*.md
+docs/*.pdf
+
+# Archivos de la tesis o generados
+Documentacion_RAG_Produccion.docx
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db

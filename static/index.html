@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistema RAG - Retrieval-Augmented Generation con búsqueda semántica y embeddings locales.">
+    <title>RAG System — Retrieval-Augmented Generation</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+</head>
+<body>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-dots">
+        <span></span><span></span><span></span>
+    </div>
+    <div class="loading-text" id="loadingText">Procesando...</div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="app-container">
+
+    <!-- Header -->
+    <header class="header">
+        <h1 class="logo-text">RAG System</h1>
+        <p class="header-subtitle">Retrieval-Augmented Generation</p>
+    </header>
+
+    <!-- Stats Bar -->
+    <section class="stats-bar" id="statsBar">
+        <div class="stat-card">
+            <div class="stat-icon purple">📦</div>
+            <div class="stat-info">
+                <div class="stat-value" id="statChunks">—</div>
+                <div class="stat-label">Chunks Indexados</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon blue">📄</div>
+            <div class="stat-info">
+                <div class="stat-value" id="statFiles">—</div>
+                <div class="stat-label">Documentos</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green">🧠</div>
+            <div class="stat-info">
+                <div class="stat-value" id="statModel">—</div>
+                <div class="stat-label">Modelo Embeddings</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon amber">⚙️</div>
+            <div class="stat-info">
+                <div class="stat-value" id="statStrategy">—</div>
+                <div class="stat-label">Estrategia</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Action Buttons -->
+    <section class="actions-row">
+        <button class="btn btn-primary" id="btnIndex" onclick="indexDocuments()">
+            <span>📥</span> Indexar Documentos
+        </button>
+        <button class="btn btn-secondary" id="btnRefreshStats" onclick="refreshStats()">
+            <span>🔄</span> Actualizar Stats
+        </button>
+        <button class="btn btn-danger" id="btnClear" onclick="clearDatabase()">
+            <span>🗑️</span> Limpiar BD
+        </button>
+    </section>
+
+    <!-- Query Section -->
+    <section class="query-section">
+        <div class="query-card">
+            <div class="query-card-title">
+                <span>🔍</span> Consulta Semántica
+            </div>
+            <div class="query-input-wrapper">
+                <textarea
+                    class="query-input"
+                    id="queryInput"
+                    placeholder="Escribe tu pregunta en lenguaje natural... Ej: ¿Qué es Python?"
+                    rows="1"
+                    autofocus
+                ></textarea>
+                <button class="btn btn-primary query-submit" id="btnQuery" onclick="submitQuery()">
+                    <span>🚀</span> Buscar
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Results Section -->
+    <section class="results-section" id="resultsSection">
+        <!-- Answer Card -->
+        <div class="answer-card" id="answerCard">
+            <div class="answer-header">
+                <div class="answer-title">
+                    <span>✨</span> Respuesta RAG
+                </div>
+                <div class="answer-meta" id="answerMeta"></div>
+            </div>
+            <div class="answer-query" id="answerQuery"></div>
+            <div class="answer-body" id="answerBody"></div>
+        </div>
+
+        <!-- Sources -->
+        <div class="sources-card" id="sourcesCard">
+            <div class="sources-title">
+                <span>📚</span> Fuentes Citadas
+            </div>
+            <div class="sources-list" id="sourcesList"></div>
+        </div>
+
+        <!-- Chunks Detail -->
+        <div class="sources-card">
+            <div class="sources-title">
+                <span>🧩</span> Chunks Recuperados
+            </div>
+            <div class="chunks-grid" id="chunksGrid"></div>
+        </div>
+    </section>
+
+    <!-- Files Section -->
+    <section class="files-section">
+        <div class="files-card">
+            <div class="files-card-header">
+                <div class="files-card-title">
+                    <span>📂</span> Documentos Disponibles
+                </div>
+                <span class="file-count-badge" id="fileCountBadge">0</span>
+            </div>
+            <ul class="files-list" id="filesList">
+                <li class="empty-state">
+                    <div class="empty-state-icon">📭</div>
+                    <div class="empty-state-text">Cargando archivos...</div>
+                </li>
+            </ul>
+        </div>
+    </section>
+
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
