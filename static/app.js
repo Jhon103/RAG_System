@@ -11,8 +11,18 @@ let isLoading = false;
 
 // ─── DOM Ready ──────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    refreshStats();
-    loadFiles();
+    if (sessionStorage.getItem('rag-token')) { refreshStats(); loadFiles(); }
+    document.getElementById('accessForm').addEventListener('submit', event => {
+        event.preventDefault();
+        const input = document.getElementById('accessToken');
+        sessionStorage.setItem('rag-token', input.value);
+        input.value = '';
+        refreshStats(); loadFiles();
+    });
+    document.getElementById('disconnect').addEventListener('click', () => {
+        sessionStorage.removeItem('rag-token');
+        location.reload();
+    });
     setupQueryInput();
 });
 
@@ -40,12 +50,16 @@ function setupQueryInput() {
 async function apiCall(endpoint, method = 'GET', body = null) {
     const options = {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionStorage.getItem('rag-token') || ''}` },
     };
     if (body) options.body = JSON.stringify(body);
 
     const response = await fetch(`${API_BASE}${endpoint}`, options);
     const data = await response.json();
+    if (!response.ok) {
+        if (response.status === 401) sessionStorage.removeItem('rag-token');
+        throw new Error(data.detail || 'No se pudo completar la operación.');
+    }
 
     if (data.error && !data.answer && !data.results) {
         throw new Error(data.error);
@@ -165,7 +179,7 @@ function renderResults(data) {
     const answerBody = document.getElementById('answerBody');
     if (data.results && data.results.length > 0) {
         let formattedAnswer = '';
-        const sourceGroups = {};
+            const sourceGroups = Object.create(null);
 
         data.results.forEach(r => {
             const src = r.source || 'unknown';
@@ -194,7 +208,7 @@ function renderResults(data) {
     // Sources tags
     const sourcesList = document.getElementById('sourcesList');
     if (data.results && data.results.length > 0) {
-        const sourcesMap = {};
+        const sourcesMap = Object.create(null);
         data.results.forEach(r => {
             const src = r.source || 'unknown';
             if (!sourcesMap[src] || r.similarity > sourcesMap[src]) {
@@ -204,7 +218,7 @@ function renderResults(data) {
 
         sourcesList.innerHTML = Object.entries(sourcesMap).map(([src, sim]) => `
             <span class="source-tag">
-                📄 ${src}
+                📄 ${escapeHtml(src)}
                 <span class="sim-score">${(sim * 100).toFixed(1)}%</span>
             </span>
         `).join('');
@@ -225,7 +239,7 @@ function renderResults(data) {
                 <div class="chunk-card">
                     <div class="chunk-header">
                         <span class="chunk-rank">${r.rank || i + 1}</span>
-                        <span class="chunk-source">${r.source || 'unknown'}</span>
+                        <span class="chunk-source">${escapeHtml(r.source || 'unknown')}</span>
                         <span class="chunk-similarity ${simClass}">${simPercent}%</span>
                     </div>
                     <div class="chunk-text" id="${id}">${escapeHtml(text)}</div>

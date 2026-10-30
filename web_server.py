@@ -6,11 +6,12 @@ Reescrito para usar FastAPI y Uvicorn, soportando asincronía y previniendo bloq
 import os
 import sys
 import time
+import hmac
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import uvicorn
 from contextlib import asynccontextmanager
 from starlette.concurrency import run_in_threadpool
@@ -28,6 +29,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DOCS_DIR = os.path.join(BASE_DIR, "docs")
 CHROMA_DIR = os.path.join(BASE_DIR, "chroma_db")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
+API_TOKEN = os.environ.get('RAG_API_TOKEN', '')
+TRUSTED_ORIGINS = [value.strip() for value in os.environ.get('RAG_ALLOWED_ORIGINS', '').split(',') if value.strip()]
 
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 100
@@ -57,15 +60,32 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=TRUSTED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
+@app.middleware('http')
+async def protect_api(request: Request, call_next):
+    if request.url.path.startswith('/api/') and request.url.path != '/api/health':
+        if len(API_TOKEN) < 32:
+            return JSONResponse({'detail': 'Configura el acceso privado en el servidor.'}, status_code=503)
+        scheme, _, token = request.headers.get('authorization', '').partition(' ')
+        if scheme != 'Bearer' or not hmac.compare_digest(token.encode(), API_TOKEN.encode()):
+            return JSONResponse({'detail': 'Acceso no autorizado.'}, status_code=401)
+        origin = request.headers.get('origin')
+        if origin and origin not in [str(request.base_url).rstrip('/'), *TRUSTED_ORIGINS]:
+            return JSONResponse({'detail': 'Origen no permitido.'}, status_code=403)
+    response = await call_next(request)
+    if request.url.path.startswith('/api/'):
+        response.headers['Cache-Control'] = 'no-store'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
+
 class QueryRequest(BaseModel):
-    query: str
-    top_k: int = TOP_K
+    query: str = Field(min_length=1, max_length=4000)
+    top_k: int = Field(default=TOP_K, ge=1, le=20)
 
 @app.get("/api/health")
 async def health():
@@ -84,8 +104,10 @@ async def stats():
             "similarity_threshold": SIMILARITY_THRESHOLD,
         }
         return stats_data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail='No se pudo completar la operación.')
 
 @app.get("/api/files")
 async def list_files():
@@ -103,8 +125,10 @@ async def list_files():
             file_list.append({"name": f, "size_bytes": size, "extension": ext})
 
         return {"files": file_list, "total": len(file_list)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail='No se pudo completar la operación.')
 
 @app.post("/api/query")
 async def query(req: QueryRequest):
@@ -160,8 +184,10 @@ async def query(req: QueryRequest):
             "elapsed_ms": round(elapsed * 1000, 1),
         }
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail='No se pudo completar la operación.')
 
 @app.post("/api/index")
 async def index_docs():
@@ -207,8 +233,10 @@ async def index_docs():
             },
         }
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail='No se pudo completar la operación.')
 
 @app.post("/api/clear")
 async def clear_db():
@@ -216,8 +244,10 @@ async def clear_db():
         vs = rag_components["vector_store"]
         await run_in_threadpool(vs.delete_collection)
         return {"status": "ok", "message": "Base de datos vectorial limpiada exitosamente."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail='No se pudo completar la operación.')
 
 # Montar frontend estático
 if os.path.exists(STATIC_DIR):
@@ -226,4 +256,4 @@ if os.path.exists(STATIC_DIR):
 if __name__ == "__main__":
     import uvicorn
     print("Iniciando servidor Uvicorn FastAPI...")
-    uvicorn.run("web_server:app", host="0.0.0.0", port=8080, reload=False)
+    uvicorn.run("web_server:app", host=os.environ.get('RAG_HOST', '127.0.0.1'), port=8080, reload=False)

@@ -29,6 +29,14 @@
         <p class="header-subtitle">Retrieval-Augmented Generation</p>
     </header>
 
+    <form id="accessForm" class="actions-row">
+        <label for="accessToken">Clave de acceso</label>
+        <input id="accessToken" type="password" autocomplete="off" required minlength="32" aria-describedby="accessHelp">
+        <button class="btn btn-primary" type="submit">Conectar</button>
+        <button class="btn btn-secondary" id="disconnect" type="button">Desconectar</button>
+        <p id="accessHelp">Se conserva únicamente durante esta pestaña. Configúrala en el servidor antes de conectarte.</p>
+    </form>
+
     <!-- Stats Bar -->
     <section class="stats-bar" id="statsBar">
         <div class="stat-card">
